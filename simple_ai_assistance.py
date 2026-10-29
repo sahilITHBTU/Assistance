@@ -1,5 +1,7 @@
 from dotenv import load_dotenv
 import os
+import json
+from tools import Functions_Name_To_Function_Map, TOOLS
 load_dotenv()
 from openai import OpenAI
 client = OpenAI(
@@ -16,9 +18,36 @@ while True:
         break
     response = client.chat.completions.create(
     model=os.getenv("MODEL"),
-    messages=messages
+    messages=messages,
+    tools = TOOLS
+   
 )
-    messages.append({"role": "assistant", "content": response.choices[0].message.content})
-    print("LLM response:" + response.choices[0].message.content)
-    print("LLM role:" + response.choices[0].message.role)
+    msg = response.choices[0].message
+    if msg.tool_calls:
+        messages.append({"role": "assistant", "content": msg.content})
+        for tool_call in msg.tool_calls:
+            function_name = tool_call.function.name
+            function_args = json.loads(tool_call.function.arguments or "{}")
+
+            fn = Functions_Name_To_Function_Map[function_name]
+            result = fn(**function_args)
+
+            messages.append({
+                "role":"tool",
+                "tool_id": tool_call.id,
+                "content": str(result)
+            })
+
+        Response = client.chat.completions.create(
+            model=os.getenv("MODEL"),
+            messages=messages,
+            
+        )   
+        msg = Response.choices[0].message
+    messages.append({"role": "assistant", "content": msg.content})
+    
+
+   # print("LLM response:" + response.choices[0].message.content)
+    print("Assistant: " + msg.content)
+
     print("Send exit to quit the chat")
