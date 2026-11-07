@@ -8,6 +8,9 @@ client = OpenAI(
     base_url = os.getenv("BASE_URL"),
     api_key = os.getenv("API_KEY")
 )
+#safeguard to prevent infinite loops
+MAX_STEPS = 10;
+
 messages = [{"role": "system", "content": os.getenv("SYSTEM_MESSAGE_FORMAT")}]
 
 while True:
@@ -16,34 +19,42 @@ while True:
     if user_input.lower() in ["exit", "quit", "bye"]:
         print("Exiting the assistant. Goodbye!")
         break
-    response = client.chat.completions.create(
-    model=os.getenv("MODEL"),
-    messages=messages,
-    tools = TOOLS
-   
-)
-    msg = response.choices[0].message
-    if msg.tool_calls:
+    
+    for step in range(MAX_STEPS):
+        response = client.chat.completions.create(
+            model=os.getenv("MODEL"),
+            messages=messages,
+            tools = TOOLS
+           
+        )
+        print("LLM response(raw):" + str(response))
+        msg = response.choices[0].message
+        if not msg.tool_calls:
+            break
         messages.append({"role": "assistant", "content": msg.content})
         for tool_call in msg.tool_calls:
             function_name = tool_call.function.name
-            function_args = json.loads(tool_call.function.arguments or "{}")
+            function_args = {}
+            try:
+              function_args = json.loads(tool_call.function.arguments or
+               "{}")
+              fn = Functions_Name_To_Function_Map[function_name]
+              result = fn(**function_args)
+            except Exception as e:
+                result = f"Error executing function '{function_name}': {str(e)}"
 
-            fn = Functions_Name_To_Function_Map[function_name]
-            result = fn(**function_args)
-
+        
             messages.append({
                 "role":"tool",
                 "tool_id": tool_call.id,
                 "content": str(result)
             })
-
-        Response = client.chat.completions.create(
-            model=os.getenv("MODEL"),
-            messages=messages,
-            
-        )   
-        msg = Response.choices[0].message
+    else:
+        fallback = "Maximum steps reached without a final response. Please try again."
+        messages.append({"role": "assistant", "content": fallback})
+        print("Assistant: " + fallback)
+        continue
+    
     messages.append({"role": "assistant", "content": msg.content})
     
 
