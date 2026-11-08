@@ -1,4 +1,6 @@
 from datetime import datetime
+import json
+from duckduckgo_search import DDGS
 import requests
 
 def get_current_time():
@@ -33,6 +35,19 @@ def get_jokes():
     except requests.exceptions.RequestException as e:
         return f"Network Error: Unable to reach the joke service. Details: {str(e)}"
 
+def search_web(query):
+    """
+    Performs a web search using DuckDuckGo and returns the top 5 results.
+    """
+    results = []
+    with DDGS() as ddgs:
+        for r in ddgs.text(query, max_results=5):
+            results.append({
+                "title": r['title'],
+                "url": r['href'],
+                "snippet": r['body']
+            })
+    return json.dumps(results)
 TOOLS = [
     {
         "type": "function",
@@ -76,10 +91,27 @@ TOOLS = [
             }
         }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+        "name": "search_web",
+        "description": "Performs a web search using DuckDuckGo and returns the top 5 results.",
+        "parameters": {
+            "type":"object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The search query."
+                }
+            }
+        }
+        }
     }
 ]
 Functions_Name_To_Function_Map = {
     "get_current_time": get_current_time,
     "get_city_Weather": get_city_Weather,
-    "get_jokes": get_jokes
+    "get_jokes": get_jokes,
+    "search_web": search_web
 }
