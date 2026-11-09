@@ -1,9 +1,17 @@
-from dotenv import load_dotenv
+#standrad library
 import os
 import json
-from tools import Functions_Name_To_Function_Map, TOOLS
-load_dotenv()
+
+#third-party library
 from openai import OpenAI
+from dotenv import load_dotenv
+from Utilities.utilities import log
+
+#Local Modeule
+from tools import  TOOLS,tool_run
+load_dotenv()
+
+
 client = OpenAI(
     base_url = os.getenv("BASE_URL"),
     api_key = os.getenv("API_KEY")
@@ -27,23 +35,17 @@ while True:
             tools = TOOLS
            
         )
-        print("LLM response(raw):" + str(response))
+        #print("LLM response(raw):" + str(response))
         msg = response.choices[0].message
         if not msg.tool_calls:
             break
-        messages.append({"role": "assistant", "content": msg.content})
-        for tool_call in msg.tool_calls:
-            function_name = tool_call.function.name
-            function_args = {}
-            try:
-              function_args = json.loads(tool_call.function.arguments or
-               "{}")
-              fn = Functions_Name_To_Function_Map[function_name]
-              result = fn(**function_args)
-            except Exception as e:
-                result = f"Error executing function '{function_name}': {str(e)}"
 
-        
+        log(f" 🤖 step {step + 1}: Model requested {len(msg.tool_calls)} tool call(s).")
+
+        messages.append({"role": "assistant", "content": msg.content})
+
+        for tool_call in msg.tool_calls:
+            result = tool_run(tool_call)
             messages.append({
                 "role":"tool",
                 "tool_id": tool_call.id,
@@ -59,6 +61,6 @@ while True:
     
 
    # print("LLM response:" + response.choices[0].message.content)
-    print("Assistant: " + msg.content)
+    print("Assistant: " + (msg.content or " "))
 
     print("Send exit to quit the chat")

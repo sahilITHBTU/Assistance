@@ -3,6 +3,8 @@ import json
 from duckduckgo_search import DDGS
 import requests
 
+from Utilities.utilities import log
+
 def get_current_time():
     """
     Returns the current date and time as a string in the format 'YYYY-MM-DD HH:MM:SS'.
@@ -11,6 +13,7 @@ def get_current_time():
 def get_city_Weather(city):
     url = f"http://wttr.in/{city}?format=3"
     response = requests.get(url, timeout=10)
+    response.raise_for_status()
     return response.text
 
 def get_jokes():
@@ -75,10 +78,11 @@ TOOLS = [
                 "city": {
                     "type": "string",
                     "description": "The name of the city to get the weather for."
-                }
-            }
-        }
-        }
+                },
+            },
+            "required":["city"]
+        },
+        },
     }
     ,{
         "type": "function",
@@ -103,10 +107,11 @@ TOOLS = [
                 "query": {
                     "type": "string",
                     "description": "The search query."
-                }
-            }
-        }
-        }
+                },
+            },
+            "required":["query"]
+        },
+        },
     }
 ]
 Functions_Name_To_Function_Map = {
@@ -115,3 +120,25 @@ Functions_Name_To_Function_Map = {
     "get_jokes": get_jokes,
     "search_web": search_web
 }
+
+
+def tool_run(tool_call):
+    function_name = tool_call.function.name
+    function_args = {}
+    
+    try:
+       
+        function_args = json.loads(tool_call.function.arguments or "{}")
+        log(f" {function_name}  {function_args}")
+        
+       
+        fn = Functions_Name_To_Function_Map[function_name]
+        result = fn(**function_args)
+        
+    except Exception as e:
+        
+        result = f"Error executing function '{function_name}': {str(e)}"
+    
+   
+    log(f" 🔍 Result from {function_name}: {result}")
+    return str(result)
