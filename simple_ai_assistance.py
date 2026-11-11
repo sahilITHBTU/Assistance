@@ -1,25 +1,24 @@
 #standrad library
 import os
 import json
+from types import SimpleNamespace
 
 #third-party library
-from openai import OpenAI
 from dotenv import load_dotenv
-from Utilities.utilities import log
 
 #Local Modeule
-from tools import  TOOLS,tool_run
+from Utilities.utilities import build_tools_payload,stream_chat
+from Utilities.logger import log
+from tools import tool_run
 load_dotenv()
 
 
-client = OpenAI(
-    base_url = os.getenv("BASE_URL"),
-    api_key = os.getenv("API_KEY")
-)
+
 #safeguard to prevent infinite loops
-MAX_STEPS = 10;
+MAX_STEPS = 10
 
 messages = [{"role": "system", "content": os.getenv("SYSTEM_MESSAGE_FORMAT")}]
+
 
 while True:
     user_input = input("User: ")
@@ -29,26 +28,22 @@ while True:
         break
     
     for step in range(MAX_STEPS):
-        response = client.chat.completions.create(
-            model=os.getenv("MODEL"),
-            messages=messages,
-            tools = TOOLS
+        full_response, tool_calls = stream_chat(messages)
            
-        )
-        #print("LLM response(raw):" + str(response))
-        msg = response.choices[0].message
-        if not msg.tool_calls:
-            break
+        
+        if not tool_calls:
+             messages.append({"role": "assistant", "content": full_response})
+             break
 
-        log(f" 🤖 step {step + 1}: Model requested {len(msg.tool_calls)} tool call(s).")
+        log(f" 💬 step {step + 1}: Model requested {len(tool_calls)} tool call(s).")
 
-        messages.append({"role": "assistant", "content": msg.content})
+        messages.append({"role": "assistant", "content": full_response,"tool_calls": build_tools_payload(tool_calls)})
 
-        for tool_call in msg.tool_calls:
+        for tool_call in tool_calls:
             result = tool_run(tool_call)
             messages.append({
                 "role":"tool",
-                "tool_id": tool_call.id,
+                "tool_call_id": tool_call.id,
                 "content": str(result)
             })
     else:
@@ -57,10 +52,4 @@ while True:
         print("Assistant: " + fallback)
         continue
     
-    messages.append({"role": "assistant", "content": msg.content})
     
-
-   # print("LLM response:" + response.choices[0].message.content)
-    print("Assistant: " + (msg.content or " "))
-
-    print("Send exit to quit the chat")
