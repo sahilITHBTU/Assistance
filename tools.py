@@ -1,15 +1,18 @@
 from datetime import datetime
 import json
-from duckduckgo_search import DDGS
+import os
+from ddgs import DDGS
 import requests
+from Utilities.logger import log
 
-from Utilities.utilities import log
 
 def get_current_time():
     """
     Returns the current date and time as a string in the format 'YYYY-MM-DD HH:MM:SS'.
     """
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    
 def get_city_Weather(city):
     url = f"http://wttr.in/{city}?format=3"
     response = requests.get(url, timeout=10)
@@ -46,11 +49,14 @@ def search_web(query):
     with DDGS() as ddgs:
         for r in ddgs.text(query, max_results=5):
             results.append({
-                "title": r['title'],
-                "url": r['href'],
-                "snippet": r['body']
+                "title": r.get("title",""),
+                "url": r.get("href",""),
+                "snippet": r.get("body","")
             })
     return json.dumps(results)
+
+
+    
 TOOLS = [
     {
         "type": "function",
@@ -112,13 +118,15 @@ TOOLS = [
             "required":["query"]
         },
         },
-    }
+    },
+    
 ]
 Functions_Name_To_Function_Map = {
     "get_current_time": get_current_time,
     "get_city_Weather": get_city_Weather,
     "get_jokes": get_jokes,
-    "search_web": search_web
+    "search_web": search_web,
+   
 }
 
 
