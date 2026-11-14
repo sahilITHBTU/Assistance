@@ -21,7 +21,7 @@ messages = [{"role": "system", "content": os.getenv("SYSTEM_MESSAGE_FORMAT")}]
 
 
 while True:
-    user_input = input("User: ")
+    user_input = input("👦🏻User: ")
     messages.append({"role": "user", "content": user_input})
     if user_input.lower() in ["exit", "quit", "bye"]:
         print("Exiting the assistant. Goodbye!")

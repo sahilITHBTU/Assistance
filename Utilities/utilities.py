@@ -35,8 +35,6 @@ def stream_chat(history):
     """
     Streams the chat response from the OpenAI API format"""
 
-
-
     stream = client.chat.completions.create(
         model=os.getenv("MODEL"),
         messages=history,
@@ -74,37 +72,8 @@ def stream_chat(history):
                     obj.function.name += tc.function.name
                 if tc.function and tc.function.arguments:
                     obj.function.arguments += tc.function.arguments
-    except Exception as e:
-        print(f"\n stop by user")
-        calls = {}
-        if Label_printed:
-                print() 
-    for chunk in stream:
-       if not chunk.choices:
-           continue
-       delta = chunk.choices[0].delta
-
-       # do we have content from llm
-       if delta.content:
-           if not Label_printed:
-               print("🤖 Assistant: ",end = "",flush=True)
-               Label_printed = True
-           print(delta.content,end= "",flush=True)
-           full_Response += delta.content
-
-           # 2. tool_calls
-       for tc in (delta.tool_calls or []):
-          obj = calls.setdefault(
-              tc.index,
-              SimpleNamespace(id=None,function=SimpleNamespace(name="",arguments=""))
-          )
-          if tc.id:
-              obj.id = tc.id
-          if tc.function and tc.function.name:
-              obj.function.name += tc.function.name
-          if tc.function and tc.function.arguments:
-              obj.function.arguments += tc.function.arguments
-
+    except KeyboardInterrupt:
+        print("Stopped by user")
     if Label_printed:
         print()  # Move to the next line after streaming content
     callList = []
